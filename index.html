@@ -392,6 +392,19 @@ body.has-cursor, body.has-cursor a, body.has-cursor button{cursor:none;}
   var imgBg = document.getElementById('heroImgBg');
   var ready = false, current = 0, target = 0, duration = 10;
 
+  function updateVideoFromHeroScroll(){
+    if(!video || !heroWrap || !ready) return;
+
+    // The video is scrubbed only across the hero's own scroll interval.
+    // Once the hero ends, the video stays on its final frame while the
+    // rest of the portfolio continues to scroll normally.
+    var rect = heroWrap.getBoundingClientRect();
+    var scrollRange = Math.max(1, heroWrap.offsetHeight - window.innerHeight);
+    var passed = Math.min(scrollRange, Math.max(0, -rect.top));
+    var progress = passed / scrollRange;
+    target = progress * Math.max(0, duration - 0.001);
+  }
+
   function onVideoReady(){
     if(ready) return;
     ready = true;
@@ -410,11 +423,14 @@ body.has-cursor, body.has-cursor a, body.has-cursor button{cursor:none;}
   video.load(); videoBg.load();
 
   function heroProgress(){
-    /* Map the complete document scroll range to the complete video duration. */
-    var total = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-    var scrollTop = window.scrollY || window.pageYOffset || 0;
-    var p = scrollTop / total;
-    return Math.min(1, Math.max(0, p));
+    /* Map ONLY the hero's scroll interval to the complete video duration.
+       After the hero finishes, the video stays on its final frame while
+       the rest of the portfolio continues scrolling. */
+    if(!heroWrap) return 1;
+    var rect = heroWrap.getBoundingClientRect();
+    var total = Math.max(1, heroWrap.offsetHeight - window.innerHeight);
+    var passed = Math.min(total, Math.max(0, -rect.top));
+    return Math.min(1, Math.max(0, passed / total));
   }
 
   function syncVideoToPageScroll(){
