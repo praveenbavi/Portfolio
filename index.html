@@ -410,11 +410,32 @@ body.has-cursor, body.has-cursor a, body.has-cursor button{cursor:none;}
   video.load(); videoBg.load();
 
   function heroProgress(){
-    var rect = heroWrap.getBoundingClientRect();
-    var total = heroWrap.offsetHeight - window.innerHeight;
-    if(total <= 0) return 0;
-    var p = (-rect.top) / total;
+    /* Map the complete document scroll range to the complete video duration. */
+    var total = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    var scrollTop = window.scrollY || window.pageYOffset || 0;
+    var p = scrollTop / total;
     return Math.min(1, Math.max(0, p));
+  }
+
+  function syncVideoToPageScroll(){
+    if(!ready) return;
+    if(video.duration && isFinite(video.duration)) duration = video.duration;
+
+    var p = heroProgress();
+    target = p * duration;
+
+    if(reduced){
+      current = target;
+    } else {
+      current += (target - current) * 0.16;
+    }
+
+    if(Math.abs(video.currentTime - current) > 0.015){
+      try{ video.currentTime = current; }catch(e){}
+    }
+    if(Math.abs(videoBg.currentTime - current) > 0.015){
+      try{ videoBg.currentTime = current; }catch(e){}
+    }
   }
 
   var progressBar = document.getElementById('progress');
@@ -424,15 +445,7 @@ body.has-cursor, body.has-cursor a, body.has-cursor button{cursor:none;}
     progressBar.style.width = (p*100) + '%';
 
     if(ready){
-      target = p * duration;
-      if(reduced){
-        current = target;
-      } else {
-        current += (target - current) * 0.10;
-      }
-      if(Math.abs(video.currentTime - current) > 0.03){
-        try{ video.currentTime = current; videoBg.currentTime = current; }catch(e){}
-      }
+      syncVideoToPageScroll();
     }
 
     /* scrollspy */
