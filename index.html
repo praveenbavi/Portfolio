@@ -422,15 +422,39 @@ body.has-cursor, body.has-cursor a, body.has-cursor button{cursor:none;}
   video.src = VSRC; videoBg.src = VSRC;
   video.load(); videoBg.load();
 
+  /* Map the 10-second video across the 7 portfolio sections.
+     Each section controls ~1.5 seconds of the cinematic background.
+     The seven sections are: home, about, experience, skills, projects,
+     certifications and contact. Since the source video is 10 seconds,
+     the final section is clamped to the final video frame when needed. */
   function heroProgress(){
-    /* Map ONLY the hero's scroll interval to the complete video duration.
-       After the hero finishes, the video stays on its final frame while
-       the rest of the portfolio continues scrolling. */
-    if(!heroWrap) return 1;
-    var rect = heroWrap.getBoundingClientRect();
-    var total = Math.max(1, heroWrap.offsetHeight - window.innerHeight);
-    var passed = Math.min(total, Math.max(0, -rect.top));
-    return Math.min(1, Math.max(0, passed / total));
+    var list = sections.filter(function(s){ return !!s; });
+    if(!list.length) return 0;
+
+    var scrollY = window.scrollY || window.pageYOffset || 0;
+    var viewport = window.innerHeight || 1;
+    var segment = 1.5;
+    var maxTime = (video.duration && isFinite(video.duration)) ? video.duration : 10;
+
+    /* Find the section currently being traversed. */
+    for(var i = 0; i < list.length; i++){
+      var section = list[i];
+      var start = section.offsetTop;
+      var nextStart = (i < list.length - 1) ? list[i + 1].offsetTop : Math.max(start + section.offsetHeight, document.documentElement.scrollHeight - viewport);
+      var span = Math.max(1, nextStart - start);
+
+      if(scrollY >= start && scrollY < nextStart){
+        var local = Math.min(1, Math.max(0, (scrollY - start) / span));
+        var time = i * segment + local * segment;
+        return Math.min(1, Math.max(0, time / maxTime));
+      }
+    }
+
+    /* Before the first section. */
+    if(scrollY < list[0].offsetTop) return 0;
+
+    /* After the final section. */
+    return 1;
   }
 
   function syncVideoToPageScroll(){
@@ -440,16 +464,13 @@ body.has-cursor, body.has-cursor a, body.has-cursor button{cursor:none;}
     var p = heroProgress();
     target = p * duration;
 
-    if(reduced){
-      current = target;
-    } else {
-      current += (target - current) * 0.16;
-    }
+    /* Keep the video tightly locked to scrolling. */
+    current = target;
 
-    if(Math.abs(video.currentTime - current) > 0.015){
+    if(Math.abs(video.currentTime - current) > 0.01){
       try{ video.currentTime = current; }catch(e){}
     }
-    if(Math.abs(videoBg.currentTime - current) > 0.015){
+    if(Math.abs(videoBg.currentTime - current) > 0.01){
       try{ videoBg.currentTime = current; }catch(e){}
     }
   }
